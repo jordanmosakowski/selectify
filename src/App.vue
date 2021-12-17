@@ -1,7 +1,10 @@
 <template>
   <div id='app'>
     <template v-if='token!=null'>
-      <h3>Welcome {{ spotifyDisplayName }}</h3>
+      <h1>Welcome {{ spotifyDisplayName }}</h1>
+      <div id='playlist-grid'>
+        <Playlist v-for='list in playlists' :key="list.id" :data="list"/>
+      </div>
     </template>
     <button v-else @click='login'>Login</button>
   </div>
@@ -12,24 +15,51 @@ import axios from 'axios';
 import crypto from "crypto";
 import base64url from "base64url";
 
+import Playlist from './components/Playlist.vue';
 const clientId = "6180cb2c2ce74ec99e0e648ff2c3d79f";
 
 export default {
   name: 'App',
+  components: {
+    Playlist
+  },
   data (){
     return {
       token: null,
       spotifyDisplayName: "",
+      spotifyUid: "",
+      playlists: [],
     }
   },
   methods: {
+    async getPlaylists(){
+      let newList = [];
+      let nextUrl = "https://api.spotify.com/v1/me/playlists?limit=50";
+      while(nextUrl!=null){
+        let newSet = (await axios.get(nextUrl, {headers: {"Authorization": "Bearer " + this.token}})).data;
+        nextUrl = newSet.next;
+        newList.push(...(newSet.items ?? []));
+      }
+      newList.sort((a,b) => {
+        if((a.owner.id === this.spotifyUid && b.owner.id === this.spotifyUid)
+            || (a.owner.id !== this.spotifyUid && b.owner.id !== this.spotifyUid)){
+          return b.tracks.total - a.tracks.total;
+        }
+        if(a.owner.id === this.spotifyUid && b.owner.id !== this.spotifyUid){
+          return -1;
+        }
+        return 1;
+      });
+      this.playlists = newList;
+      console.log(this.playlists[0]);
+    },
     async checkForToken(){
       if(this.token!=null){
         return;
       }
       //Check if the token is saved in local storage
       let dataStr = localStorage.getItem("token-info");
-      if(dataStr==null){
+      if(dataStr == null){
         //check if the user has an auth code that needs to be converted into a token
         await this.checkForAuthCode();
         return;
@@ -56,7 +86,7 @@ export default {
       const urlParams = new URLSearchParams(window.location.search);
       let code = urlParams.get("code");
       console.log(code);
-      if(code==null){
+      if(code == null){
         return;
       }
       //Convert the auth code into an access token
@@ -118,13 +148,22 @@ export default {
   created: async function () {
     await this.checkForToken();
     if(this.token!=null){
-      this.spotifyDisplayName = (await this.getSpotifyEndpoint("/me")).display_name;
+      const me = (await this.getSpotifyEndpoint("/me"));
+      this.spotifyDisplayName = me.display_name;
+      this.spotifyUid = me.id;
+      this.getPlaylists();
     }
   }
 }
 </script>
 
 <style>
+#playlist-grid{
+  margin: 30px;
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  gap: 30px;
+}
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
