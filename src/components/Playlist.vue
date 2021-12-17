@@ -2,6 +2,7 @@
     <div>
         <img :src='data.images[0].url'>
         <h3> {{data.name}}</h3>
+        <button v-on:click='onClick'>Select</button>
     </div>
 </template>
 
@@ -11,6 +12,11 @@ export default {
     props: {
         data: Object
     },
+    methods: {
+        onClick(){
+            this.$emit("clicked",this.data);
+        }
+    }
 }
 </script>
 

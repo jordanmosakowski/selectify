@@ -3,7 +3,7 @@
     <template v-if='token!=null'>
       <h1>Welcome {{ spotifyDisplayName }}</h1>
       <div id='playlist-grid'>
-        <Playlist v-for='list in playlists' :key="list.id" :data="list"/>
+        <Playlist v-for='list in playlists' @clicked="getTracksInPlaylist" :key="list.id" :data="list"/>
       </div>
     </template>
     <button v-else @click='login'>Login</button>
@@ -29,9 +29,32 @@ export default {
       spotifyDisplayName: "",
       spotifyUid: "",
       playlists: [],
+      // tracksCache: [],
     }
   },
   methods: {
+    async getTracksInPlaylist(playlist){
+      console.log(playlist.id);
+      let arr = [];
+      let promises = [];
+      for(let i=0; i<playlist.tracks.total; i+=20){
+        promises.push(await this.getTrackFeatures(arr,playlist.id,i,20));
+      }
+      await Promise.all(promises);
+      console.log(arr);
+      console.log(this.tracksCache);
+    },
+    async getTrackFeatures(arr,playlistId,offset,count){
+      let tracks = await this.getSpotifyEndpoint("/playlists/"+playlistId+"/tracks?limit="+count.toString()+"&offset="+offset.toString());
+      let filteredTracks = (tracks?.items ?? []).filter(t => t.is_local == false);
+      if(filteredTracks.length>0){
+        // this.tracksCache.push(...filteredTracks);
+        let trackIds = filteredTracks.map(t => t.track.id) ?? [];
+        let features = await this.getSpotifyEndpoint("/audio-features?ids="+encodeURIComponent(trackIds.join(",")));
+        arr.push(...(features.audio_features));
+      }
+    },
+
     async getPlaylists(){
       let newList = [];
       let nextUrl = "https://api.spotify.com/v1/me/playlists?limit=50";
@@ -53,6 +76,7 @@ export default {
       this.playlists = newList;
       console.log(this.playlists[0]);
     },
+
     async checkForToken(){
       if(this.token!=null){
         return;
@@ -79,6 +103,7 @@ export default {
       };
       await this.fetchToken(formData);
     },
+
     async checkForAuthCode(){
       if(this.token !=null){
         return;
@@ -105,6 +130,7 @@ export default {
         window.history.replaceState({}, document.title, clean_uri);
       }
     },
+
     async fetchToken(formData){
       //request an access token using the form data
       let body = Object.keys(formData).map((a) => `${a}=${encodeURIComponent(formData[a])}`).join("&");
@@ -125,6 +151,7 @@ export default {
       this.token = json.access_token;
       localStorage.setItem("token-info",JSON.stringify(data));
     },
+
     login(){
       localStorage.removeItem("token-info");
       localStorage.removeItem("verifier");
