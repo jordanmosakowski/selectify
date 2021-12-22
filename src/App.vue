@@ -6,7 +6,20 @@
         <Playlist v-for='list in playlists' @clicked="getTracksInPlaylist" :key="list.id" :data="list"/>
       </div>
       <template v-else>
-        <h3>Loaded {{ tracksLoaded }} / {{selectedPlaylist.tracks.total}}</h3>
+        <div v-if='tracks!=null'>
+          <h3>Selected {{countSelected}} Tracks</h3>
+          <h4>X:</h4>
+          <div class='range-slider'>
+            <input type="range" min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox">
+            <input type="range" min="0" max="1" step="0.001" v-model="sliderXMax" @change="updateGraphBox">
+          </div>
+          <h4>Y:</h4>
+          <div class='range-slider'>
+            <input type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox">
+            <input type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox">
+          </div>
+        </div>
+        <h3 v-else>Loaded {{ tracksLoaded }} / {{selectedPlaylist.tracks.total}}</h3>
         <div id='chart-holder' v-if='selectedPlaylist!=null'>
           <canvas width="500px" height="500px" id="chart"></canvas>
         </div>
@@ -22,6 +35,7 @@ import Playlist from './components/Playlist.vue';
 import SpotifyAuth from './components/SpotifyAuth.vue';
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
+import annotationPlugin from 'chartjs-plugin-annotation';
 
 export default {
   name: 'App',
@@ -32,6 +46,10 @@ export default {
   data (){
     return {
       token: null,
+      xMin: 0.0,
+      xMax: 1.0,
+      yMin: 0.0,
+      yMax: 1.0,
       spotifyDisplayName: "",
       spotifyUid: "",
       playlists: [],
@@ -41,7 +59,93 @@ export default {
       tracksCache: {},
     }
   },
+  computed: {
+    countSelected: function(){
+      if(this.tracks==null){
+        return 0;
+      }
+      return this.tracks.filter(t => t.energy>=this.xMin && t.energy<=this.xMax && t.valence>=this.yMin && t.valence<=this.yMax).length;
+    },
+    sliderXMin: {
+      get: function() {
+        var val = Number(this.xMin);
+        return val;
+      },
+      set: function(val) {
+        val = Number(val);
+        if (val > this.xMax) {
+          this.xMax = val;
+        }
+        this.xMin = val;
+        const graphBox = this.chart.options.plugins.annotation.annotations.box1;
+        graphBox.xMin = this.xMin;
+        graphBox.xMax = this.xMax;
+        this.chart.update();
+      }
+    },
+    sliderXMax: {
+      get: function() {
+        var val = Number(this.xMax);
+        return val;
+      },
+      set: function(val) {
+        val = Number(val);
+        if (val < this.xMin) {
+          this.xMin = val;
+        }
+        this.xMax = val;
+        const graphBox = this.chart.options.plugins.annotation.annotations.box1;
+        graphBox.xMin = this.xMin;
+        graphBox.xMax = this.xMax;
+        this.chart.update();
+      }
+    },
+    sliderYMin: {
+      get: function() {
+        var val = Number(this.yMin);
+        return val;
+      },
+      set: function(val) {
+        val = Number(val);
+        if (val > this.yMax) {
+          this.yMax = val;
+        }
+        this.yMin = val;
+        const graphBox = this.chart.options.plugins.annotation.annotations.box1;
+        graphBox.yMin = this.yMin;
+        graphBox.yMax = this.yMax;
+        this.chart.update();
+      }
+    },
+    sliderYMax: {
+      get: function() {
+        var val = Number(this.yMax);
+        return val;
+      },
+      set: function(val) {
+        val = Number(val);
+        if (val < this.yMin) {
+          this.yMin = val;
+        }
+        this.yMax = val;
+
+        const graphBox = this.chart.options.plugins.annotation.annotations.box1;
+        graphBox.yMin = this.yMin;
+        graphBox.yMax = this.yMax;
+        this.chart.update();
+      }
+    },
+  },
   methods: {
+    updateGraphBox(){
+      const graphBox = this.chart.options.plugins.annotation.annotations.box1;
+      graphBox.xMin = this.xMin;
+      graphBox.xMax = this.xMax;
+      graphBox.yMin = this.yMin;
+      graphBox.yMax = this.yMax;
+      this.chart.update();
+
+    },
     async getTracksInPlaylist(playlist){
       console.log(playlist.id);
       this.selectedPlaylist = playlist;
@@ -56,6 +160,7 @@ export default {
       console.log(this.tracksCache);
       this.tracks = arr;
       Chart.register(zoomPlugin);
+      Chart.register(annotationPlugin);
       const data = {
         datasets: [{
           labels: this.tracks.map(t => t?.id ?? ""),
@@ -76,11 +181,24 @@ export default {
         type: 'scatter',
         data: data,
         options: {
+          responsive:true,
           scales: {
             x: {min: 0, max: 1},
             y: {min: 0, max: 1},
           },
           plugins: {
+            annotation: {
+              annotations: {
+                box1: {
+                  type: 'box',
+                  xMin: 0.0,
+                  xMax: 1.0,
+                  yMin: 0.0,
+                  yMax: 1.0,
+                  backgroundColor: 'rgba(66, 130, 255, 0.25)'
+                }
+              }
+            },
             tooltip: {
               callbacks: {
                   label: (data) => {
@@ -185,5 +303,27 @@ export default {
 #chart-holder{
     width: 500px;
     height: 500px;
+}
+
+.range-slider {
+  width: 500px;
+  margin: auto;
+  text-align: center;
+  position: relative;
+  height: 1em;
+}
+
+.range-slider input[type=range] {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+}
+.range-slider input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+}
+.range-slider input[type=range]::-webkit-slider-thumb {
+  z-index: 2;
+  position: relative;
 }
 </style>
