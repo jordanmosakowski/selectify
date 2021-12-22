@@ -18,6 +18,7 @@
             <input type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox">
             <input type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox">
           </div>
+          <input v-model="newPlaylistName" type='text'><button v-on:click='createPlaylist'>Create</button>
         </div>
         <h3 v-else>Loaded {{ tracksLoaded }} / {{selectedPlaylist.tracks.total}}</h3>
         <div id='chart-holder' v-if='selectedPlaylist!=null'>
@@ -57,6 +58,7 @@ export default {
       tracksLoaded: 0,
       tracks: null,
       tracksCache: {},
+      newPlaylistName: "My new playlist"
     }
   },
   computed: {
@@ -64,7 +66,7 @@ export default {
       if(this.tracks==null){
         return 0;
       }
-      return this.tracks.filter(t => t.energy>=this.xMin && t.energy<=this.xMax && t.valence>=this.yMin && t.valence<=this.yMax).length;
+      return this.getFilteredTracks().length;
     },
     sliderXMin: {
       get: function() {
@@ -137,6 +139,24 @@ export default {
     },
   },
   methods: {
+    getFilteredTracks(){
+      return this.tracks.filter(t => t.energy>=this.xMin && t.energy<=this.xMax && t.valence>=this.yMin && t.valence<=this.yMax);
+    },
+    async createPlaylist(){
+      const newPlaylist = (await axios.post("https://api.spotify.com/v1/users/"+this.spotifyUid+"/playlists", {
+        name:this.newPlaylistName,
+        description: "Playlist generated from selectify"
+      },{headers: {"Authorization": "Bearer " + this.token}})).data;
+      let tracks = this.getFilteredTracks();
+      while(tracks.length>0){
+        let ids = tracks.slice(0,100).map(t => "spotify:track:"+(t?.id ?? ""));
+        console.log((await axios.post("https://api.spotify.com/v1/playlists/"+newPlaylist.id+"/tracks", {
+          uris: ids
+        },{headers: {"Authorization": "Bearer " + this.token}})).data);
+        tracks = tracks.slice(100);
+      }
+
+    },
     updateGraphBox(){
       const graphBox = this.chart.options.plugins.annotation.annotations.box1;
       graphBox.xMin = this.xMin;
