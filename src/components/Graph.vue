@@ -12,6 +12,8 @@
         <input type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox"/>
         <input type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox"/>
       </div>
+      <h4>New Playlist Length:</h4>
+      <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span>{{playlistLength}}</span><br>
       <label for="distribution">Distribution:</label>
       <select name="distribution" id="distribution" v-model="distribution">
         <option value="uniform">Uniform</option>
@@ -23,11 +25,17 @@
         <select name="distributionAround" id="distributionAround" v-model="distributionAround">
           <option value="center">Box Center</option>
           <option value="point">Selected Point</option>
-          <option value="track">Selected Track</option>
+          <!-- <option value="track">Selected Track</option> -->
         </select>
-        <br />
+        <template v-if='distributionAround=="point"'>
+            <h4>X:</h4>
+            <input class='slider' type="range" min="0" max="1" step="0.001" v-model="distributionX"/>
+            <h4>Y:</h4>
+            <input class='slider' type="range" min="0" max="1" step="0.001" v-model="distributionY"/>
+        </template>
+        <br/>
       </template>
-      <br />
+      <br/>
       <input v-model="newPlaylistName" type="text" /><button v-on:click="createPlaylist">
         Create
       </button>
@@ -42,17 +50,17 @@
 </template>
 
 <script>
-import axios from "axios";
+// import axios from "axios";
 import zoomPlugin from "chartjs-plugin-zoom";
 import annotationPlugin from "chartjs-plugin-annotation";
 import Chart from "chart.js/auto";
-
 export default {
   name: "Graph",
   data() {
     return {
       chart: null,
       xMin: 0.0, xMax: 1.0, yMin: 0.0, yMax: 1.0,
+      playlistLength: 0,
       newPlaylistName: "My new playlist",
       distribution: "uniform",
       distributionAround: "center",
@@ -80,7 +88,7 @@ export default {
   },
   computed: {
     countSelected: function () {
-      return this.tracks == null ? 0 : this.getFilteredTracks().length;
+        return this.tracks == null ? 0 : this.getFilteredTracks().length;
     },
     sliderXMin: {
       get: function () {
@@ -89,7 +97,8 @@ export default {
       set: function (val) {
         val = Number(val);
         if (val > this.xMax) {this.xMax = val;}
-        this.xMin = val;Number(this.xMax)
+        this.xMin = val;Number(this.xMax);
+        this.updateGraphBox();
       },
     },
     sliderXMax: {
@@ -128,30 +137,72 @@ export default {
   },
   methods: {
     getFilteredTracks() {
-      return this.tracks.filter(
+      return this?.tracks?.filter(
         (t) => t.energy >= this.xMin && t.energy <= this.xMax &&
           t.valence >= this.yMin && t.valence <= this.yMax
-      );
+      ) ?? 0;
     },
     async createPlaylist() {
-      const newPlaylist = (await axios.post("https://api.spotify.com/v1/users/" + this.spotifyUid + "/playlists",
-          {
-            name: this.newPlaylistName,
-            description: "Playlist generated from selectify",
-          },
-          { headers: { Authorization: "Bearer " + this.token } }
-        )).data;
-      let tracks = this.getFilteredTracks();
-      while (tracks.length > 0) {
-        let ids = tracks.slice(0, 100).map((t) => "spotify:track:" + (t?.id ?? ""));
-        console.log((await axios.post("https://api.spotify.com/v1/playlists/" +newPlaylist.id +"/tracks",
-              {
-                uris: ids,
-              },
-              { headers: { Authorization: "Bearer " + this.token } }
-        )).data);
-        tracks = tracks.slice(100);
-      }
+    //   const newPlaylist = (await axios.post("https://api.spotify.com/v1/users/" + this.spotifyUid + "/playlists", {
+    //         name: this.newPlaylistName,
+    //         description: "Playlist generated from selectify",
+    //       },{ headers: { Authorization: "Bearer " + this.token } }
+    //     )).data;
+        let tracks = this.getFilteredTracks();
+
+        let filteredTracks = [];
+        if(this.playlistLength>=tracks.length){
+            filteredTracks = tracks;
+        }
+        else if(this.distribution === "uniform"){
+            for(let i=0; i<this.playlistLength; i++){
+                let index = Math.floor(Math.random() * tracks.length);
+                filteredTracks.push(tracks[index]);
+                tracks.splice(index, 1);
+            }
+        }
+        else{
+            let center = {x:0,y:0}
+            if(this.distributionAround === "center"){
+                center = {x: (this.xMin + this.xMax)/2, y: (this.yMin+this.yMax)/2};
+            }
+            let totalScore = 0;
+            for(let t of tracks){
+                let distX = t.energy - center.x;
+                let distY = t.valence - center.y;
+                let distSq = distX * distX + distY * distY;
+                let score = 0;
+                if(this.distribution == "dist"){
+                    score = 1/(Math.sqrt(distSq));
+                }
+                else{
+                    score = 1/(distSq * 100);
+                }
+                t.score = score;
+                totalScore += score;
+            }
+            console.log(center,totalScore);
+            for(let i=0; i<this.playlistLength; i++){
+                let score = Math.random() * totalScore;
+                let index = 0;
+                while(index<tracks.length && tracks[index].score<score){
+                    score -= tracks[index].score;
+                    index++;
+                }
+                filteredTracks.push(tracks[index]);
+                totalScore -= tracks[index].score;
+                tracks.splice(index, 1);
+            }
+        }
+        console.log(filteredTracks.map(t => this.tracksCache[t.id].name));
+        console.log(filteredTracks.map(t => t.score));
+        // while (filteredTracks.length > 0) {
+        //     let ids = filteredTracks.slice(0, 100).map((t) => "spotify:track:" + (t?.id ?? ""));
+        //     console.log((await axios.post("https://api.spotify.com/v1/playlists/" +newPlaylist.id +"/tracks",
+        //         { uris: ids,}, { headers: { Authorization: "Bearer " + this.token } }
+        //     )).data);
+        //     filteredTracks = filteredTracks.slice(100);
+        // }
     },
     updateGraphBox() {
       const graphBox = this.chart.options.plugins.annotation.annotations.box1;
@@ -160,6 +211,9 @@ export default {
       graphBox.yMin = this.yMin;
       graphBox.yMax = this.yMax;
       this.chart.update();
+      if(this.playlistLength>this.countSelected){
+          this.playlistLength = this.countSelected;
+      }
     },
     createGraph() {
       Chart.register(zoomPlugin);
@@ -231,6 +285,7 @@ export default {
         },
       };
       console.log(document.getElementById("chart"));
+      this.playlistLength = Math.min(Math.floor(this.tracks.length / 4),50);
       this.chart = new Chart(document.getElementById("chart"), config);
     },
   },
@@ -263,5 +318,8 @@ export default {
 .range-slider input[type="range"]::-webkit-slider-thumb {
   z-index: 2;
   position: relative;
+}
+.slider{
+    width: 500px;
 }
 </style>
