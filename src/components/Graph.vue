@@ -3,11 +3,17 @@
     <div v-if="tracks != null">
       <h3>Selected {{ countSelected }} Tracks</h3>
       <h4>X:</h4>
+      <select v-model='featureX' @change='updateGraphFeatures()'>
+        <option v-for="feature in featureOptions" :key="feature" :value="feature">{{ feature }}</option>
+      </select>
       <div class="range-slider">
         <input type="range" min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox"/>
         <input type="range" min="0" max="1" step="0.001" v-model="sliderXMax" @change="updateGraphBox"/>
       </div>
       <h4>Y:</h4>
+      <select v-model='featureY' @change='updateGraphFeatures()'>
+        <option v-for="feature in featureOptions" :key="feature" :value="feature">{{ feature }}</option>
+      </select>
       <div class="range-slider">
         <input type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox"/>
         <input type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox"/>
@@ -54,6 +60,7 @@
 import zoomPlugin from "chartjs-plugin-zoom";
 import annotationPlugin from "chartjs-plugin-annotation";
 import Chart from "chart.js/auto";
+
 export default {
   name: "Graph",
   data() {
@@ -67,6 +74,9 @@ export default {
       distributionX: 0.5,
       distributionY: 0.5,
       hasCreatedGraph: false,
+      featureX: "energy",
+      featureY: "valence",
+      featureOptions: ["acousticness", "danceability", "energy", "instrumentalness", "liveness", "speechiness", "valence"]
     };
   },
   props: {
@@ -136,10 +146,13 @@ export default {
     },
   },
   methods: {
+    clamp(num,min,max){
+      return Math.min(Math.max(num,min),max);
+    },
     getFilteredTracks() {
       return this?.tracks?.filter(
-        (t) => t.energy >= this.xMin && t.energy <= this.xMax &&
-          t.valence >= this.yMin && t.valence <= this.yMax
+        (t) => t[this.featureX] >= this.xMin && t[this.featureX] <= this.xMax &&
+          t[this.featureY] >= this.yMin && t[this.featureY] <= this.yMax
       ) ?? 0;
     },
     async createPlaylist() {
@@ -168,8 +181,8 @@ export default {
           }
           let totalScore = 0;
           for(let t of tracks){
-              let distX = t.energy - center.x;
-              let distY = t.valence - center.y;
+              let distX = t[this.featureX] - center.x;
+              let distY = t[this.featureY] - center.y;
               let distSq = distX * distX + distY * distY;
               let score = 0;
               if(this.distribution == "dist"){
@@ -215,6 +228,14 @@ export default {
           this.playlistLength = this.countSelected;
       }
     },
+    updateGraphFeatures(){
+      const data = this.chart.data.datasets[0].data;
+      for(let i=0; i<this.tracks.length; i++){
+          data[i].x = this.clamp(this.tracks[i][this.featureX] ?? 0,0,1);
+          data[i].y = this.clamp(this.tracks[i][this.featureY] ?? 0,0,1);
+      }
+      this.chart.update();
+    },
     createGraph() {
       Chart.register(zoomPlugin);
       Chart.register(annotationPlugin);
@@ -224,8 +245,8 @@ export default {
             label: "Tracks in " + this.selectedPlaylist.name,
             data: this.tracks.map((t) => {
               return {
-                x: t?.energy ?? 0,
-                y: t?.valence ?? 0,
+                x: t[this.featureX] ?? 0,
+                y: t[this.featureY] ?? 0,
               };
             }),
             backgroundColor: "rgb(255, 0, 0)",
