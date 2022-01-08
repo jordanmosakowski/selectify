@@ -3,7 +3,15 @@
         <template v-if='token!=null'>
         <h1>Welcome {{ spotifyDisplayName }}</h1>
         </template>
-        <button v-else @click='login'>Login</button>
+        <div v-else class='center main' style=''>
+            <div class='background'></div>
+            <div class='center body'>
+                <h1>Spotlight</h1>
+                <button @click='login'><span><img src='@/assets/spotify.svg'>Login with Spotify</span></button>
+            </div>
+            
+        </div>
+        
     </div>
 </template>
 
@@ -135,3 +143,82 @@ export default {
     }
 }
 </script>
+
+<style scoped>
+.main{
+    width: 100vw;
+    max-width: 400px;
+    height: 100vw;
+    max-height: 400px;
+    background-color: rgb(150, 150, 0) !important;
+    border-width: 200vh 200vw;
+    border-style: solid;
+    border-color: rgb(150, 150, 0);
+}
+button{
+    width: 80vw;
+    max-width: 225px;
+    border: none;
+    background-color: #1DB954;
+    color: white;
+    font-size: 1em;
+    font-weight: bold;
+    border-radius: 50px;
+    padding: 10px 5px;
+    cursor: pointer;
+}
+button img{
+    width: 1em;
+    height: 1em;
+    color: white;
+    object-fit: contain;
+    filter: invert(1);
+    margin-right: 10px;
+    margin-bottom: 5px;
+    vertical-align:middle;
+}
+.center{
+    margin: 0;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+.center.body{
+    transform: translate(-50%, calc(-50% - 20px));
+}
+@keyframes slideInFromLeft {
+  0% {
+    left: calc(-250vw - 225px);
+  }
+  100% {
+    left: -200vw;
+  }
+}
+.background{
+    pointer-events: none;
+    height: 100%;
+    width: 100%;
+    /* background-color: #ffff00; */
+    position: absolute;
+    z-index: 100;
+    border-radius: 100%;
+    border-width: 200vh 200vw;
+    border-style: solid;
+    border-color: #000;
+    top: -200vh;
+    left: -200vw;
+    /* opacity: 0.4; */
+    animation: 3s ease-out 0s 1 slideInFromLeft;
+    background: radial-gradient(ellipse at center,  rgba(255,0,0,0) 0%,rgba(0,0,0,0) 50%,rgba(0,0,0,1) 60%,rgb(0, 0, 0,1) 100%);
+}
+.background-spotlight{
+    z-index: -1;
+    height: 100vh;
+    width: 100vw;
+    background-color: #ffff00;
+    opacity: 0.4;
+    border-radius: 100%;
+
+}
+</style>

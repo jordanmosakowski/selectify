@@ -114,12 +114,44 @@ export default {
   grid-template-columns: auto auto auto auto;
   gap: 30px;
 }
+@media screen and (max-width: 800px) {
+  #playlist-grid{
+    grid-template-columns: auto auto auto;
+  }
+}
+@media screen and (max-width: 600px){
+  #playlist-grid{
+    grid-template-columns: auto auto;
+  }
+}
+@media screen and (max-width: 400px){
+  #playlist-grid{
+    grid-template-columns: auto;
+  }
+}
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
-  color: #2c3e50;
-  margin-top: 60px;
+  color: #ffffff;
+  padding: 30px;
+  height: calc(100vh - 60px);
+  overflow-x: hidden;
+  overflow-y: scroll;
+}
+#app::-webkit-scrollbar {
+  width: 10px;
+}
+#app::-webkit-scrollbar-track {
+  background: #333333;
+  border-radius: 5px;
+}
+#app::-webkit-scrollbar-thumb {
+  background: #666666; 
+  border-radius: 5px;
+}
+#app::-webkit-scrollbar-thumb:hover {
+  background: #888888;
 }
 </style>

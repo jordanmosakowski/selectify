@@ -250,7 +250,7 @@ export default {
                   type: "box",
                   xMin: 0.0, xMax: 1.0,
                   yMin: 0.0, yMax: 1.0,
-                  backgroundColor: "rgba(66, 130, 255, 0.25)",
+                  backgroundColor: "rgba(255, 255, 0, 0.3)",
                 },
               },
             },
