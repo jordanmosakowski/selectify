@@ -145,7 +145,7 @@ export default {
     async createPlaylist() {
     //   const newPlaylist = (await axios.post("https://api.spotify.com/v1/users/" + this.spotifyUid + "/playlists", {
     //         name: this.newPlaylistName,
-    //         description: "Playlist generated from selectify",
+    //         description: "Playlist generated from Spotlight",
     //       },{ headers: { Authorization: "Bearer " + this.token } }
     //     )).data;
         let tracks = this.getFilteredTracks();
@@ -155,44 +155,44 @@ export default {
             filteredTracks = tracks;
         }
         else if(this.distribution === "uniform"){
-            for(let i=0; i<this.playlistLength; i++){
-                let index = Math.floor(Math.random() * tracks.length);
-                filteredTracks.push(tracks[index]);
-                tracks.splice(index, 1);
-            }
+          for(let i=0; i<this.playlistLength; i++){
+              let index = Math.floor(Math.random() * tracks.length);
+              filteredTracks.push(tracks[index]);
+              tracks.splice(index, 1);
+          }
         }
         else{
-            let center = {x:0,y:0}
-            if(this.distributionAround === "center"){
-                center = {x: (this.xMin + this.xMax)/2, y: (this.yMin+this.yMax)/2};
-            }
-            let totalScore = 0;
-            for(let t of tracks){
-                let distX = t.energy - center.x;
-                let distY = t.valence - center.y;
-                let distSq = distX * distX + distY * distY;
-                let score = 0;
-                if(this.distribution == "dist"){
-                    score = 1/(Math.sqrt(distSq));
-                }
-                else{
-                    score = 1/(distSq * 100);
-                }
-                t.score = score;
-                totalScore += score;
-            }
-            console.log(center,totalScore);
-            for(let i=0; i<this.playlistLength; i++){
-                let score = Math.random() * totalScore;
-                let index = 0;
-                while(index<tracks.length && tracks[index].score<score){
-                    score -= tracks[index].score;
-                    index++;
-                }
-                filteredTracks.push(tracks[index]);
-                totalScore -= tracks[index].score;
-                tracks.splice(index, 1);
-            }
+          let center = {x:0,y:0}
+          if(this.distributionAround === "center"){
+              center = {x: (this.xMin + this.xMax)/2, y: (this.yMin+this.yMax)/2};
+          }
+          let totalScore = 0;
+          for(let t of tracks){
+              let distX = t.energy - center.x;
+              let distY = t.valence - center.y;
+              let distSq = distX * distX + distY * distY;
+              let score = 0;
+              if(this.distribution == "dist"){
+                  score = 1/(Math.sqrt(distSq));
+              }
+              else{
+                  score = 1/(distSq * 100);
+              }
+              t.score = score;
+              totalScore += score;
+          }
+          console.log(center,totalScore);
+          for(let i=0; i<this.playlistLength; i++){
+              let score = Math.random() * totalScore;
+              let index = 0;
+              while(index<tracks.length && tracks[index].score<score){
+                  score -= tracks[index].score;
+                  index++;
+              }
+              filteredTracks.push(tracks[index]);
+              totalScore -= tracks[index].score;
+              tracks.splice(index, 1);
+          }
         }
         console.log(filteredTracks.map(t => this.tracksCache[t.id].name));
         console.log(filteredTracks.map(t => t.score));
@@ -241,6 +241,9 @@ export default {
             y: { min: 0, max: 1 },
           },
           plugins: {
+            legend: {
+              display: false,
+            },
             annotation: {
               annotations: {
                 box1: {
@@ -256,9 +259,7 @@ export default {
                 label: (data) => {
                   const track = this.tracksCache[data.dataset.labels[data.dataIndex]];
                   return (
-                    '"' +
-                    track.name +
-                    '" by ' +
+                    '"' + track.name + '" by ' +
                     track.artists.map((a) => a.name).join(", ")
                   );
                 },

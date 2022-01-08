@@ -1,4 +1,4 @@
-# selectify
+# Spotlight
 
 ## Project setup
 ```

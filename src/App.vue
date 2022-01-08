@@ -13,42 +13,6 @@
         :tracksLoaded="tracksLoaded"
         :selectedPlaylist="selectedPlaylist"
       />
-      <!-- <template v-else>
-        <div v-if='tracks!=null'>
-          <h3>Selected {{countSelected}} Tracks</h3>
-          <h4>X:</h4>
-          <div class='range-slider'>
-            <input type="range" min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox">
-            <input type="range" min="0" max="1" step="0.001" v-model="sliderXMax" @change="updateGraphBox">
-          </div>
-          <h4>Y:</h4>
-          <div class='range-slider'>
-            <input type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox">
-            <input type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox">
-          </div>
-          <label for="distribution">Distribution:</label>
-          <select name="distribution" id="distribution" v-model='distribution'>
-            <option value="uniform">Uniform</option>
-            <option value="dist">Distance</option>
-            <option value="distSq">Distance Squared</option>
-          </select><br>
-          <template v-if='distribution!="uniform"'>
-            <label for="distributionAround">Calculate distance from:</label>
-            <select name="distributionAround" id="distributionAround" v-model='distributionAround'>
-              <option value="center">Box Center</option>
-              <option value="point">Selected Point</option>
-              <option value="track">Selected Track</option>
-            </select>
-            <br>
-          </template>
-          <br>
-          <input v-model="newPlaylistName" type='text'><button v-on:click='createPlaylist'>Create</button>
-        </div>
-        <h3 v-else>Loaded {{ tracksLoaded }} / {{selectedPlaylist.tracks.total}}</h3>
-        <div id='chart-holder' v-if='selectedPlaylist!=null'>
-          <canvas width="500px" height="500px" id="chart"></canvas>
-        </div>
-      </template> -->
     </template>
   </div>
 </template>
