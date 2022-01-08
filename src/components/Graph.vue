@@ -2,22 +2,6 @@
   <div id="wrapper">
     <div v-if="tracks != null">
       <h3>Selected {{ countSelected }} Tracks</h3>
-      <h4>X:</h4>
-      <select v-model='featureX' @change='updateGraphFeatures()'>
-        <option v-for="feature in featureOptions" :key="feature" :value="feature">{{ feature }}</option>
-      </select>
-      <div class="range-slider">
-        <input type="range" min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox"/>
-        <input type="range" min="0" max="1" step="0.001" v-model="sliderXMax" @change="updateGraphBox"/>
-      </div>
-      <h4>Y:</h4>
-      <select v-model='featureY' @change='updateGraphFeatures()'>
-        <option v-for="feature in featureOptions" :key="feature" :value="feature">{{ feature }}</option>
-      </select>
-      <div class="range-slider">
-        <input type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox"/>
-        <input type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox"/>
-      </div>
       <h4>New Playlist Length:</h4>
       <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span>{{playlistLength}}</span><br>
       <label for="distribution">Distribution:</label>
@@ -46,12 +30,39 @@
         Create
       </button>
     </div>
-    <h3 v-else>
-      Loaded {{ tracksLoaded }} / {{ selectedPlaylist.tracks.total }}
-    </h3>
-    <div id="chart-holder" v-if="selectedPlaylist != null">
-      <canvas width="500px" height="500px" id="chart"></canvas>
+    <div v-else>
+      <h3>Loading tracks</h3>
+      <div class='loading-bar'>
+        <div class='loading-bar-fill' :style="{width: loadedPercent + '%'}">
+
+        </div>
+      </div>
     </div>
+    <main>
+      <template v-if='tracks!=null'>
+        <div class='feature-x'>
+          <select v-model='featureX' @change='updateGraphFeatures()'>
+            <option v-for="feature in featureOptions" :key="feature" :value="feature">{{ feature }}</option>
+          </select>
+        </div>
+        <div class="range-slider slider-x">
+          <input type="range" min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox"/>
+          <input type="range" min="0" max="1" step="0.001" v-model="sliderXMax" @change="updateGraphBox"/>
+        </div>
+        <div class='feature-y'>
+          <select v-model='featureY' class='feature-y' @change='updateGraphFeatures()'>
+            <option v-for="feature in featureOptions" :key="feature" :value="feature">{{ feature }}</option>
+          </select>
+        </div>
+        <div class="range-slider slider-y">
+          <input orient="vertical" type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox"/>
+          <input orient="vertical" type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox"/>
+        </div>
+      </template>
+      <div id="chart-holder" v-if="selectedPlaylist != null">
+        <canvas width="500px" height="500px" id="chart"></canvas>
+      </div>
+    </main>
   </div>
 </template>
 
@@ -97,6 +108,9 @@ export default {
       }
   },
   computed: {
+    loadedPercent: function(){
+      return Math.floor(this.tracksLoaded / this.selectedPlaylist.tracks.total*100);
+    },
     countSelected: function () {
         return this.tracks == null ? 0 : this.getFilteredTracks().length;
     },
@@ -341,7 +355,70 @@ export default {
   z-index: 2;
   position: relative;
 }
+.range-slider input[type="range"][orient="vertical"] {
+  writing-mode: bt-lr; /* IE */
+  -webkit-appearance: slider-vertical; /* WebKit */
+  width: 1em;
+  height: 100%;
+}
 .slider{
     width: 500px;
+}
+
+main{
+  justify-content: center;
+  display: grid;
+  grid-template-columns: 200px 1em 500px;
+  grid-template-rows: 500px 1em auto;
+  gap: 10px;
+  /* width: 100%; */
+  /* height: 600px; */
+}
+#chart-holder{
+  grid-column: 3;
+  grid-row: 1;
+}
+.feature-y{
+  grid-column: 1;
+  grid-row: 1;
+}
+.feature-y select{
+    margin: 0;
+    position: relative;
+    top: 50%;
+    -ms-transform: translateY(-50%);
+    transform: translateY(-50%);
+}
+.slider-y{
+  grid-column: 2;
+  grid-row: 1;
+  height: 100%;
+  width: 1em;
+}
+.feature-x{
+  grid-column: 3;
+  grid-row: 3;
+}
+.slider-x{
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.loading-bar{
+  background-color: #333333;
+  width: 80vw;
+  max-width: 500px;
+  height: 10px;
+  border-radius: 50px;
+  margin: auto;
+}
+.loading-bar-fill{
+  background-color: #ff0000;
+  height: 10px;
+  width: 0%;
+  border-radius: 50px;
+}
+#chart{
+  z-index: 500;
 }
 </style>

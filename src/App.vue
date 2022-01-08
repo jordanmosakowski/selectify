@@ -138,7 +138,7 @@ export default {
   padding: 30px;
   height: calc(100vh - 60px);
   overflow-x: hidden;
-  overflow-y: scroll;
+  overflow-y: auto;
 }
 #app::-webkit-scrollbar {
   width: 10px;
