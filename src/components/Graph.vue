@@ -5,24 +5,18 @@
       <h4>New Playlist Length:</h4>
       <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span>{{playlistLength}}</span><br>
       <label for="distribution">Distribution:</label>
-      <select name="distribution" id="distribution" v-model="distribution">
+      <select name="distribution" id="distribution" v-model="distribution" @change='updateDistributionMethod()'>
         <option value="uniform">Uniform</option>
         <option value="dist">Distance</option>
         <option value="distSq">Distance Squared</option>
         </select><br />
       <template v-if="distribution != 'uniform'">
         <label for="distributionAround">Calculate distance from:</label>
-        <select name="distributionAround" id="distributionAround" v-model="distributionAround">
+        <select name="distributionAround" id="distributionAround" v-model="distributionAround" @change='updateDistributionMethod()'>
           <option value="center">Box Center</option>
           <option value="point">Selected Point</option>
           <!-- <option value="track">Selected Track</option> -->
         </select>
-        <template v-if='distributionAround=="point"'>
-            <h4>X:</h4>
-            <input class='slider' type="range" min="0" max="1" step="0.001" v-model="distributionX"/>
-            <h4>Y:</h4>
-            <input class='slider' type="range" min="0" max="1" step="0.001" v-model="distributionY"/>
-        </template>
         <br/>
       </template>
       <br/>
@@ -69,7 +63,8 @@
 // import axios from "axios";
 import zoomPlugin from "chartjs-plugin-zoom";
 import annotationPlugin from "chartjs-plugin-annotation";
-import Chart from "chart.js/auto";
+import 'chartjs-plugin-dragdata'
+import {Chart,registerables} from "chart.js";
 
 export default {
   name: "Graph",
@@ -85,10 +80,9 @@ export default {
       distributionY: 0.5,
       hasCreatedGraph: false,
       featureX: "energy",
-      featureY: "valence",
-      featureOptions: ["acousticness", "danceability", "energy", "instrumentalness", "liveness", "speechiness", "valence"],
+      featureY: "danceability",
+      featureOptions: ["acousticness", "danceability", "energy", "instrumentalness", "liveness", "popularity", "speechiness", "valence"],
       query: "",
-
     };
   },
   props: {
@@ -122,7 +116,6 @@ export default {
           .includes(this.query.toLowerCase());
         });
       }
-      console.log(reslt.map(t => this.tracksCache[t.id].name));
       return reslt;
     },
     loadedPercent: function(){
@@ -206,15 +199,16 @@ export default {
           }
         }
         else{
-          let center = {x:0,y:0}
-          if(this.distributionAround === "center"){
-              center = {x: (this.xMin + this.xMax)/2, y: (this.yMin+this.yMax)/2};
-          }
+          let center = this.chart.data.datasets[1].data[0];
+          console.log(center);
           let totalScore = 0;
           for(let t of tracks){
               let distX = t[this.featureX] - center.x;
               let distY = t[this.featureY] - center.y;
               let distSq = distX * distX + distY * distY;
+              if(distSq == 0){
+                distSq = 0.0000000000001; // avoid divide by zero
+              }
               let score = 0;
               if(this.distribution == "dist"){
                   score = 1/(Math.sqrt(distSq));
@@ -255,6 +249,9 @@ export default {
       graphBox.yMin = this.yMin;
       graphBox.yMax = this.yMax;
       this.chart.update();
+      if(this.distribution!= "uniform" && this.distributionAround == "center"){
+        this.updateDistributionMethod(); 
+      }
       if(this.playlistLength>this.countSelected){
           this.playlistLength = this.countSelected;
       }
@@ -278,9 +275,33 @@ export default {
       this.chart.data.datasets[0].pointBackgroundColor = data.map((d) => d.disabled ? "#888888" : "#ff0000");
       this.chart.update();
     },
+    updateDistributionMethod(){
+      console.log("updateDistributionMethod");
+      const dot = this.chart.data.datasets[1];
+      if(this.distribution === "uniform"){
+        dot.radius = 0;
+        dot.hoverRadius = 0;
+        dot.dragData = false;
+      }
+      else{
+        dot.radius = 5;
+        dot.hoverRadius = 7;
+        if(this.distributionAround == 'point'){
+            dot.dragData = true;
+        }
+        else{
+          console.log(this.xMin, this.xMax, this.yMin, this.yMax);
+          dot.dragData = false;
+          dot.data[0].x = (this.xMin + this.xMax)/2;
+          dot.data[0].y = (this.yMin+this.yMax)/2;
+        }
+      }
+      this.chart.update();
+    },
     createGraph() {
       Chart.register(zoomPlugin);
       Chart.register(annotationPlugin);
+      Chart.register(...registerables);
       const data = {
         datasets: [
           {
@@ -292,7 +313,21 @@ export default {
                 disabled: false,
               };
             }),
+            dragData: false,
             pointBackgroundColor: new Array(this.tracks.length).fill("rgb(255,0,0)")
+          },
+          {
+            data: [
+              {
+                x: this.distributionX,
+                y: this.distributionY,
+              },
+            ],
+            radius: 0,
+            hoverRadius: 0,
+            dragData: true,
+            dragX: true,
+            backgroundColor: "#00ff00"
           }
         ],
       };
@@ -306,12 +341,17 @@ export default {
             y: { min: 0, max: 1 },
           },
           plugins: {
+            dragData: {
+              round: 3,
+              dragX: true
+            },
             legend: {
               display: false,
             },
             annotation: {
               annotations: {
                 box1: {
+                  drawTime: "beforeDatasetsDraw",
                   type: "box",
                   xMin: 0.0, xMax: 1.0,
                   yMin: 0.0, yMax: 1.0,
@@ -319,10 +359,11 @@ export default {
                 },
               },
             },
+            
             tooltip: {
-              // filter: (tooltip) =>{
-              //   return !tooltip.dataset.data[tooltip.dataIndex].disabled;
-              // },
+              filter: (tooltip) =>{
+                return tooltip.datasetIndex === 0;
+              },
               callbacks: {
                 label: (data) => {
                   const track = this.tracksCache[data.dataset.data[data.dataIndex].id];
@@ -401,8 +442,8 @@ export default {
 main{
   justify-content: center;
   display: grid;
-  grid-template-columns: 200px 1em 500px;
-  grid-template-rows: 500px 1em auto;
+  grid-template-columns: 125 1em 500px;
+  grid-template-rows: 500px 1em 1.5em;
   gap: 10px;
   /* width: 100%; */
   /* height: 600px; */

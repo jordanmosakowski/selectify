@@ -12,6 +12,7 @@
     "base64url": "^3.0.1",
     "chart.js": "^3.5.1",
     "chartjs-plugin-annotation": "^1.2.1",
+    "chartjs-plugin-dragdata": "^2.2.4",
     "chartjs-plugin-zoom": "^1.2.0",
     "core-js": "^3.6.5",
     "crypto": "^1.0.1",

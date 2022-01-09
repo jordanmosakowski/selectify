@@ -67,6 +67,13 @@ export default {
         }
         let trackIds = filteredTracks.map(t => t.track.id) ?? [];
         let features = await this.getSpotifyEndpoint("/audio-features?ids="+encodeURIComponent(trackIds.join(",")));
+        //add the popularity to the features for a given track
+        for(let f of features.audio_features){
+          if(f==null){
+            continue;
+          }
+          f.popularity = this.tracksCache[f.id].popularity / 100;
+        }
         arr.push(...(features.audio_features.filter(t => t!=null)));
         this.tracksLoaded = arr.length;
       }
