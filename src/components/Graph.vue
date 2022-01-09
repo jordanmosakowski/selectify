@@ -26,6 +26,7 @@
         <br/>
       </template>
       <br/>
+      <input type='text' v-model='query'><span> {{searchResults.length}} results</span><br/>
       <input v-model="newPlaylistName" type="text" /><button v-on:click="createPlaylist">
         Create
       </button>
@@ -33,9 +34,7 @@
     <div v-else>
       <h3>Loading tracks</h3>
       <div class='loading-bar'>
-        <div class='loading-bar-fill' :style="{width: loadedPercent + '%'}">
-
-        </div>
+        <div class='loading-bar-fill' :style="{width: loadedPercent + '%'}"></div>
       </div>
     </div>
     <main>
@@ -87,7 +86,9 @@ export default {
       hasCreatedGraph: false,
       featureX: "energy",
       featureY: "valence",
-      featureOptions: ["acousticness", "danceability", "energy", "instrumentalness", "liveness", "speechiness", "valence"]
+      featureOptions: ["acousticness", "danceability", "energy", "instrumentalness", "liveness", "speechiness", "valence"],
+      query: "",
+
     };
   },
   props: {
@@ -99,6 +100,9 @@ export default {
     selectedPlaylist: Object,
   },
   watch: {
+    query: function(){
+      this.updateGraphFromSearch()
+    },
       tracks: function(newVal){
         console.log(newVal);
         if(newVal!=null && !this.hasCreatedGraph){
@@ -108,6 +112,19 @@ export default {
       }
   },
   computed: {
+    searchResults: function(){
+      let reslt = this.tracks;
+      if(this.query.length > 0){
+        reslt = this.tracks.filter((t) => {
+          const track = this.tracksCache[t.id];
+          return track.name.toLowerCase().includes(this.query.toLowerCase())
+          || track.artists.map((a) => a.name).join(" ").toLowerCase()
+          .includes(this.query.toLowerCase());
+        });
+      }
+      console.log(reslt.map(t => this.tracksCache[t.id].name));
+      return reslt;
+    },
     loadedPercent: function(){
       return Math.floor(this.tracksLoaded / this.selectedPlaylist.tracks.total*100);
     },
@@ -250,21 +267,34 @@ export default {
       }
       this.chart.update();
     },
+    updateGraphFromSearch(){
+      const data = this.chart.data.datasets[0].data;
+      for(let i=0; i<data.length; i++){
+        const track = this.tracksCache[data[i].id];
+        data[i].disabled = !(track.name.toLowerCase().includes(this.query.toLowerCase())
+          || track.artists.map((a) => a.name).join(" ").toLowerCase()
+          .includes(this.query.toLowerCase()));
+      }
+      this.chart.data.datasets[0].pointBackgroundColor = data.map((d) => d.disabled ? "#888888" : "#ff0000");
+      this.chart.update();
+    },
     createGraph() {
       Chart.register(zoomPlugin);
       Chart.register(annotationPlugin);
       const data = {
-        datasets: [{
-            labels: this.tracks.map((t) => t?.id ?? ""),
-            label: "Tracks in " + this.selectedPlaylist.name,
+        datasets: [
+          {
             data: this.tracks.map((t) => {
               return {
                 x: t[this.featureX] ?? 0,
                 y: t[this.featureY] ?? 0,
+                id: t.id ?? 0,
+                disabled: false,
               };
             }),
-            backgroundColor: "rgb(255, 0, 0)",
-        }],
+            pointBackgroundColor: new Array(this.tracks.length).fill("rgb(255,0,0)")
+          }
+        ],
       };
       const config = {
         type: "scatter",
@@ -290,9 +320,12 @@ export default {
               },
             },
             tooltip: {
+              // filter: (tooltip) =>{
+              //   return !tooltip.dataset.data[tooltip.dataIndex].disabled;
+              // },
               callbacks: {
                 label: (data) => {
-                  const track = this.tracksCache[data.dataset.labels[data.dataIndex]];
+                  const track = this.tracksCache[data.dataset.data[data.dataIndex].id];
                   return (
                     '"' + track.name + '" by ' +
                     track.artists.map((a) => a.name).join(", ")
