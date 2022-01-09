@@ -2,8 +2,10 @@
   <div id="wrapper">
     <div v-if="tracks != null">
       <h3>Selected {{ countSelected }} Tracks</h3>
-      <h4>New Playlist Length:</h4>
-      <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span>{{playlistLength}}</span><br>
+      <h4>Tracks to Include:</h4>
+      <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span> {{playlistLength}}</span><br>
+      <h4>Maximum Number of Recommendations to add:</h4>
+      <input class='slider' type="range" min="0" max='100' step="1" v-model='recommendations'><span> {{recommendations}}</span><br>
       <label for="distribution">Distribution:</label>
       <select name="distribution" id="distribution" v-model="distribution" @change='updateDistributionMethod()'>
         <option value="uniform">Uniform</option>
@@ -65,13 +67,14 @@ import zoomPlugin from "chartjs-plugin-zoom";
 import annotationPlugin from "chartjs-plugin-annotation";
 import 'chartjs-plugin-dragdata'
 import {Chart,registerables} from "chart.js";
+import axios from 'axios';
 
 export default {
   name: "Graph",
   data() {
     return {
       chart: null,
-      xMin: 0.0, xMax: 1.0, yMin: 0.0, yMax: 1.0,
+      xMin: 0.4, xMax: 0.6, yMin: 0.4, yMax: 0.6,
       playlistLength: 0,
       newPlaylistName: "My new playlist",
       distribution: "uniform",
@@ -83,6 +86,7 @@ export default {
       featureY: "danceability",
       featureOptions: ["acousticness", "danceability", "energy", "instrumentalness", "liveness", "popularity", "speechiness", "valence"],
       query: "",
+      recommendations: 10,
     };
   },
   props: {
@@ -98,7 +102,6 @@ export default {
       this.updateGraphFromSearch()
     },
       tracks: function(newVal){
-        console.log(newVal);
         if(newVal!=null && !this.hasCreatedGraph){
             this.hasCreatedGraph = true;
             this.createGraph(); 
@@ -180,11 +183,11 @@ export default {
       ) ?? 0;
     },
     async createPlaylist() {
-    //   const newPlaylist = (await axios.post("https://api.spotify.com/v1/users/" + this.spotifyUid + "/playlists", {
-    //         name: this.newPlaylistName,
-    //         description: "Playlist generated from Spotlight",
-    //       },{ headers: { Authorization: "Bearer " + this.token } }
-    //     )).data;
+        const newPlaylist = (await axios.post("https://api.spotify.com/v1/users/" + this.spotifyUid + "/playlists", {
+            name: this.newPlaylistName,
+            description: "Playlist generated from Spotlight",
+          },{ headers: { Authorization: "Bearer " + this.token } }
+        )).data;
         let tracks = this.getFilteredTracks();
 
         let filteredTracks = [];
@@ -200,7 +203,6 @@ export default {
         }
         else{
           let center = this.chart.data.datasets[1].data[0];
-          console.log(center);
           let totalScore = 0;
           for(let t of tracks){
               let distX = t[this.featureX] - center.x;
@@ -219,7 +221,6 @@ export default {
               t.score = score;
               totalScore += score;
           }
-          console.log(center,totalScore);
           for(let i=0; i<this.playlistLength; i++){
               let score = Math.random() * totalScore;
               let index = 0;
@@ -233,14 +234,95 @@ export default {
           }
         }
         console.log(filteredTracks.map(t => this.tracksCache[t.id].name));
-        console.log(filteredTracks.map(t => t.score));
-        // while (filteredTracks.length > 0) {
-        //     let ids = filteredTracks.slice(0, 100).map((t) => "spotify:track:" + (t?.id ?? ""));
-        //     console.log((await axios.post("https://api.spotify.com/v1/playlists/" +newPlaylist.id +"/tracks",
-        //         { uris: ids,}, { headers: { Authorization: "Bearer " + this.token } }
-        //     )).data);
-        //     filteredTracks = filteredTracks.slice(100);
-        // }
+        
+        if(this.recommendations>0){
+          if(this.distribution!="uniform"){
+            filteredTracks.sort((a,b) => b.score - a.score);
+          }
+          console.log(filteredTracks);
+          const seedIds = filteredTracks.slice(0,5).map(t => t.id);
+          console.log(seedIds);
+          const params = {
+              seed_tracks: seedIds.join(","),
+              limit: 100,
+          };
+          //set min and max features for X and Y
+          params["min_" + this.featureX] = this.xMin;
+          params["max_" + this.featureX] = this.xMax;
+          params["min_" + this.featureY] = this.yMin;
+          params["max_" + this.featureY] = this.yMax;
+          //scale by 100 and round if feature is popularity
+          if(this.featureX=="popularity"){
+            params["min_" + this.featureX] = Math.floor(this.xMin*100);
+            params["max_" + this.featureX] = Math.floor(this.xMax*100);
+          }
+          if(this.featureY=="popularity"){
+            params["min_" + this.featureY] = Math.floor(this.yMin*100);
+            params["max_" + this.featureY] = Math.floor(this.yMax*100);
+          }
+          //if distribution isn't uniform, set target feature for x and y to chart center
+          if(this.distribution!="uniform"){
+            params["target_" + this.featureX] = this.chart.data.datasets[1].data[0].x;
+            params["target_" + this.featureY] = this.chart.data.datasets[1].data[0].y;
+            //scale by 100 and round if feature is popularity
+            if(this.featureX=="popularity"){
+              params["target_" + this.featureX] = Math.floor(params["target_" + this.featureX]*100);
+            }
+            if(this.featureY=="popularity"){
+              params["target_" + this.featureY] = Math.floor(params["target_" + this.featureY]*100);
+            }
+          }
+          console.log(params);
+          const recommendations = (await axios.get("https://api.spotify.com/v1/recommendations", {
+            params: params,
+            headers: { Authorization: "Bearer " + this.token }
+          })).data.tracks;
+          console.log(recommendations);
+          let fullList = this.getFilteredTracks();
+          for(let i=0; i<this.recommendations; i++){
+            if(recommendations.length==0){
+              continue;
+            }
+            //Add the first recommendation that isn't in tracks
+            let index = 0;
+            while(index<recommendations.length && fullList.map(t => t.id).includes(recommendations[index].id)){
+              index++;
+            }
+            if(index<recommendations.length){
+              filteredTracks.push(recommendations[index]);
+              recommendations.splice(index, 1);
+              continue;
+            }
+            index = 0;
+            while(index<recommendations.length && filteredTracks.map(t => t.id).includes(recommendations[index].id)){
+              index++;
+            }
+            if(index<recommendations.length){
+              filteredTracks.push(recommendations[index]);
+              recommendations.splice(index, 1);
+            }
+          }
+        }
+
+        console.log(filteredTracks.map(t => {
+          //return track name if it is in cache
+          if(this.tracksCache[t.id]){
+            return this.tracksCache[t.id].name + " by " + this.tracksCache[t.id].artists.map(a => a.name).join(", ");
+          }
+          //return t.name and t.artists
+          else{
+            return "(REC) "+t.name + " by " + t.artists.map(a => a.name).join(", ");
+          }
+        }));
+
+        while (filteredTracks.length > 0) {
+            let ids = filteredTracks.slice(0, 100).map((t) => "spotify:track:" + (t?.id ?? ""));
+            console.log((await axios.post("https://api.spotify.com/v1/playlists/" +newPlaylist.id +"/tracks",
+                { uris: ids,}, { headers: { Authorization: "Bearer " + this.token } }
+            )).data);
+            filteredTracks = filteredTracks.slice(100);
+        }
+        window.open(newPlaylist.external_urls.spotify, "_blank");
     },
     updateGraphBox() {
       const graphBox = this.chart.options.plugins.annotation.annotations.box1;
@@ -276,7 +358,6 @@ export default {
       this.chart.update();
     },
     updateDistributionMethod(){
-      console.log("updateDistributionMethod");
       const dot = this.chart.data.datasets[1];
       if(this.distribution === "uniform"){
         dot.radius = 0;
@@ -290,7 +371,6 @@ export default {
             dot.dragData = true;
         }
         else{
-          console.log(this.xMin, this.xMax, this.yMin, this.yMax);
           dot.dragData = false;
           dot.data[0].x = (this.xMin + this.xMax)/2;
           dot.data[0].y = (this.yMin+this.yMax)/2;
@@ -353,8 +433,8 @@ export default {
                 box1: {
                   drawTime: "beforeDatasetsDraw",
                   type: "box",
-                  xMin: 0.0, xMax: 1.0,
-                  yMin: 0.0, yMax: 1.0,
+                  xMin: 0.4, xMax: 0.6,
+                  yMin: 0.4, yMax: 0.6,
                   backgroundColor: "rgba(255, 255, 0, 0.3)",
                 },
               },
