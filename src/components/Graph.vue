@@ -1,31 +1,7 @@
 <template>
   <div id="wrapper">
     <div v-if="tracks != null">
-      <h3>Selected {{ countSelected }} Tracks</h3>
-      <h4>Tracks to Include:</h4>
-      <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span> {{playlistLength}}</span><br>
-      <h4>Maximum Number of Recommendations to add:</h4>
-      <input class='slider' type="range" min="0" max='100' step="1" v-model='recommendations'><span> {{recommendations}}</span><br>
-      <label for="distribution">Distribution:</label>
-      <select name="distribution" id="distribution" v-model="distribution" @change='updateDistributionMethod()'>
-        <option value="uniform">Uniform</option>
-        <option value="dist">Distance</option>
-        <option value="distSq">Distance Squared</option>
-        </select><br />
-      <template v-if="distribution != 'uniform'">
-        <label for="distributionAround">Calculate distance from:</label>
-        <select name="distributionAround" id="distributionAround" v-model="distributionAround" @change='updateDistributionMethod()'>
-          <option value="center">Box Center</option>
-          <option value="point">Selected Point</option>
-          <!-- <option value="track">Selected Track</option> -->
-        </select>
-        <br/>
-      </template>
-      <br/>
-      <input type='text' v-model='query'><span> {{searchResults.length}} results</span><br/>
-      <input v-model="newPlaylistName" type="text" /><button v-on:click="createPlaylist">
-        Create
-      </button>
+      <input type='text' class='search' placeholder="Search" v-model='query'>
     </div>
     <div v-else>
       <h3>Loading tracks</h3>
@@ -41,7 +17,7 @@
           </select>
         </div>
         <div class="range-slider slider-x">
-          <input type="range" min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox"/>
+          <input type="range" class='slider-min' min="0" max="1" step="0.001" v-model="sliderXMin" @change="updateGraphBox"/>
           <input type="range" min="0" max="1" step="0.001" v-model="sliderXMax" @change="updateGraphBox"/>
         </div>
         <div class='feature-y'>
@@ -50,7 +26,7 @@
           </select>
         </div>
         <div class="range-slider slider-y">
-          <input orient="vertical" type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox"/>
+          <input orient="vertical" class='slider-min' type="range" min="0" max="1" step="0.001" v-model="sliderYMin" @change="updateGraphBox"/>
           <input orient="vertical" type="range" min="0" max="1" step="0.001" v-model="sliderYMax" @change="updateGraphBox"/>
         </div>
       </template>
@@ -58,6 +34,37 @@
         <canvas width="500px" height="500px" id="chart"></canvas>
       </div>
     </main>
+    <div v-if="tracks != null">
+      <h3>Selected {{ countSelected }} Tracks</h3>
+      <h4>Tracks to Include:</h4>
+      <input class='slider' type="range" min="0" :max='countSelected' step="1" v-model='playlistLength'><span> {{playlistLength}}</span><br>
+      <h4>Recommendations to Add:</h4>
+      <input class='slider' type="range" min="0" max='100' step="1" v-model='recommendations'><span> {{recommendations}}</span><br>
+      <!-- <label for="distribution">Distribution:</label> -->
+      <!-- <select name="distribution" id="distribution" v-model="distribution" @change='updateDistributionMethod()'>
+        <option value="uniform">Uniform</option>
+        <option value="dist">Distance</option>
+        <option value="distSq">Distance Squared</option>
+        </select><br /> -->
+      <template v-if="distribution != 'uniform'">
+        <label for="distributionAround">Calculate distance from:</label>
+        <select name="distributionAround" id="distributionAround" v-model="distributionAround" @change='updateDistributionMethod()'>
+          <option value="center">Box Center</option>
+          <option value="point">Selected Point</option>
+          <!-- <option value="track">Selected Track</option> -->
+        </select>
+        <br/>
+      </template>
+      <br/>
+      <!-- <span> {{searchResults.length}} results</span> -->
+      <br/>
+      <div class='create-playlist'>
+        <input v-model="newPlaylistName" type="text" />
+        <button v-on:click="createPlaylist">
+          Create
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -76,7 +83,7 @@ export default {
       chart: null,
       xMin: 0.4, xMax: 0.6, yMin: 0.4, yMax: 0.6,
       playlistLength: 0,
-      newPlaylistName: "My new playlist",
+      newPlaylistName: "My New Playlist",
       distribution: "uniform",
       distributionAround: "center",
       distributionX: 0.5,
@@ -417,8 +424,18 @@ export default {
         options: {
           responsive: true,
           scales: {
-            x: { min: 0, max: 1 },
-            y: { min: 0, max: 1 },
+            x: { 
+              min: 0, max: 1,
+              grid: {
+                color: "#666666",
+              }
+            },
+            y: { 
+              min: 0, max: 1,
+              grid: {
+                color: "#666666",
+              }
+            },
           },
           plugins: {
             dragData: {
@@ -439,7 +456,6 @@ export default {
                 },
               },
             },
-            
             tooltip: {
               filter: (tooltip) =>{
                 return tooltip.datasetIndex === 0;
@@ -483,6 +499,11 @@ export default {
 </script>
 
 <style scoped>
+input[type="range"]::-webkit-slider-runnable-track{
+  background-color: #333333;
+  border-radius: 20px;
+}
+
 #chart-holder {
   width: 500px;
   height: 500px;
@@ -515,6 +536,10 @@ export default {
   width: 1em;
   height: 100%;
 }
+.range-slider input[type="range"][orient="vertical"]::-webkit-slider-thumb{
+  left: 1px;
+}
+
 .slider{
     width: 500px;
 }
@@ -522,8 +547,8 @@ export default {
 main{
   justify-content: center;
   display: grid;
-  grid-template-columns: 125 1em 500px;
-  grid-template-rows: 500px 1em 1.5em;
+  grid-template-columns: auto 1em 500px;
+  grid-template-rows: 500px 0.25em 3em;
   gap: 10px;
   /* width: 100%; */
   /* height: 600px; */
@@ -575,4 +600,73 @@ main{
 #chart{
   z-index: 500;
 }
+.search{
+  width: 80vw;
+  max-width: 500px;
+  background-color: #333333;
+  font-size: 1.5em;
+  color: #ffffff;
+  border-radius: 50px;
+  padding: 10px 20px;
+  margin: 20px auto;
+  border: none;
+}
+input:focus, select:focus{
+  outline: none;
+}
+
+.create-playlist{
+  width: 80vw;
+  max-width: 500px;
+  background-color: #333333;
+  font-size: 1.5em;
+  color: #ffffff;
+  border-radius: 50px;
+  margin: 20px auto;
+  border: none;
+}
+.create-playlist button{
+  background-color: #ff0000;
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 50px;
+  width: 100px;
+  font-weight: bold;
+  font-size: 0.8em;
+}
+
+.create-playlist input{
+  width: calc(100% - 140px);
+  background-color: #333333;
+  font-size: 0.7em;
+  color: #ffffff;
+  border-radius: 50px;
+  padding-left: 20px;
+  padding-right: 20px;
+  border: none;
+}
+
+input[type="range"]::-ms-fill-lower,input[type="range"]::-moz-range-progress {
+  background-color: #ff0000; 
+}
+
+input[type="range"].slider-min::-ms-fill-lower{
+  background-color: #333333;
+}
+
+input[type=range]::-webkit-slider-thumb,input[type=range]::-ms-thumb,input[type=range]::-moz-range-thumb {
+  background: #ff0000;
+}
+
+select{
+  background-color: #333333;
+  font-size: 1em;
+  color: #ffffff;
+  border-radius: 50px;
+  padding: 8px 5px;
+  margin: 20px auto;
+  border: none;
+}
+
 </style>

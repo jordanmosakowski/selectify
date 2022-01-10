@@ -2,9 +2,12 @@
   <div id='app'>
     <SpotifyAuth @completeLogin="completeLogin"/>
     <template v-if='token!=null'>
-      <div id='playlist-grid' v-if='selectedPlaylist==null'>
-        <Playlist v-for='list in playlists' @clicked="getTracksInPlaylist" :key="list.id" :data="list"/>
-      </div>
+      <template v-if='selectedPlaylist==null'>
+        <h2>Select a playlist to get started</h2>
+        <div id='playlist-grid'>
+          <Playlist v-for='list in playlists' @clicked="getTracksInPlaylist" :key="list.id" :data="list"/>
+        </div>
+      </template>
       <Graph v-else 
         :tracks="tracks"
         :token="token"
