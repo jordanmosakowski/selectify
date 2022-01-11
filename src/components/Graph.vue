@@ -361,7 +361,7 @@ export default {
           || track.artists.map((a) => a.name).join(" ").toLowerCase()
           .includes(this.query.toLowerCase()));
       }
-      this.chart.data.datasets[0].pointBackgroundColor = data.map((d) => d.disabled ? "#888888" : "#ff0000");
+      this.chart.data.datasets[0].pointBackgroundColor = data.map((d) => d.disabled ? "#888888" : "#ffb300");
       this.chart.update();
     },
     updateDistributionMethod(){
@@ -401,7 +401,7 @@ export default {
               };
             }),
             dragData: false,
-            pointBackgroundColor: new Array(this.tracks.length).fill("rgb(255,0,0)")
+            pointBackgroundColor: new Array(this.tracks.length).fill("#ffb300")
           },
           {
             data: [
@@ -526,15 +526,20 @@ input[type="range"]::-webkit-slider-runnable-track{
 .range-slider input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
 }
-.range-slider input[type="range"]::-webkit-slider-thumb {
-  z-index: 2;
+input[type="range"]::-webkit-slider-thumb {
+  z-index: 10;
   position: relative;
 }
 .range-slider input[type="range"][orient="vertical"] {
-  writing-mode: bt-lr; /* IE */
-  -webkit-appearance: slider-vertical; /* WebKit */
-  width: 1em;
-  height: 100%;
+  /* writing-mode: bt-lr; */
+  /* -webkit-appearance: slider-vertical; */
+  /* -webkit-transform:rotate(90deg); */
+  height: 1.5em;
+  width: 500px;
+  position: absolute;
+  top: 240px;
+  left: -250px;
+  /* height: 100%; */
 }
 .range-slider input[type="range"][orient="vertical"]::-webkit-slider-thumb{
   left: 1px;
@@ -567,12 +572,15 @@ main{
     top: 50%;
     -ms-transform: translateY(-50%);
     transform: translateY(-50%);
+    z-index: 100;
 }
 .slider-y{
   grid-column: 2;
   grid-row: 1;
   height: 100%;
   width: 1em;
+  transform: rotate(270deg);
+  z-index: 10;
 }
 .feature-x{
   grid-column: 3;
@@ -592,7 +600,7 @@ main{
   margin: auto;
 }
 .loading-bar-fill{
-  background-color: #ff0000;
+  background-color: #ffb300;
   height: 10px;
   width: 0%;
   border-radius: 50px;
@@ -626,7 +634,7 @@ input:focus, select:focus{
   border: none;
 }
 .create-playlist button{
-  background-color: #ff0000;
+  background-color: #ffb300;
   color: #ffffff;
   border: none;
   padding: 10px 20px;
@@ -647,17 +655,6 @@ input:focus, select:focus{
   border: none;
 }
 
-input[type="range"]::-ms-fill-lower,input[type="range"]::-moz-range-progress {
-  background-color: #ff0000; 
-}
-
-input[type="range"].slider-min::-ms-fill-lower{
-  background-color: #333333;
-}
-
-input[type=range]::-webkit-slider-thumb,input[type=range]::-ms-thumb,input[type=range]::-moz-range-thumb {
-  background: #ff0000;
-}
 
 select{
   background-color: #333333;

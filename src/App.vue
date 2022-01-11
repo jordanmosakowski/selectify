@@ -164,4 +164,31 @@ export default {
 #app::-webkit-scrollbar-thumb:hover {
   background: #888888;
 }
+
+
+
+input[type='range'],input[type='range'][orient="vertical"] {
+  /* align-items: center; */
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+input[type='range']:focus {
+  box-shadow: none;
+  outline: none;
+}
+input[type='range']::-webkit-slider-thumb,input[orient="vertical"]::-webkit-slider-thumb {
+  height: 15px;
+  width: 15px;
+  -webkit-appearance: none;
+          appearance: none;
+  background: #ffb300;
+  border-radius: 8px;
+  z-index: 10;
+  /* margin-top: -8px; */
+  /* border: 1px solid #777; */
+}
 </style>
